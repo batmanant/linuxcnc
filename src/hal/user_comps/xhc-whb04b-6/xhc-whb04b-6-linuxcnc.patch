@@ -1,0 +1,114 @@
+--- hal.cc	Sun Jan 21 22:15:57 2018
++++ hal.cc	Sun Mar 11 17:46:32 2018
+@@ -785,7 +785,7 @@
+ 
+ // ----------------------------------------------------------------------
+ 
+-void Hal::setStepSize(const hal_float_t& stepSize)
++void Hal::setStepSize(const hal_float_t stepSize)
+ {
+     *memory->out.axisXJogScale = stepSize;
+     *memory->out.axisYJogScale = stepSize;
+--- hal.h	Sun Jan 21 22:15:57 2018
++++ hal.h	Sun Mar 11 17:46:30 2018
+@@ -341,7 +341,7 @@
+ 
+     //! Sets the new feed rate. The step mode must be set accordingly.
+     //! \param feedRate the new feed rate independent of step mode
+-    void setStepSize(const hal_float_t& feedRate);
++    void setStepSize(const hal_float_t feedRate);
+     //! If lead is active.
+     void setLead();
+     //! Sets the hal state of the respective pin (reset). Usually called in case the reset
+--- main.cc	Sun Jan 21 22:15:57 2018
++++ main.cc	Tue Mar 13 22:09:13 2018
+@@ -25,15 +25,19 @@
+ #include <sstream>
+ #include <unistd.h>
+ #include <signal.h>
++#include <libgen.h>
+ 
+ // 3rd party includes
+-#include <google/protobuf/stubs/common.h>
++//#include <google/protobuf/stubs/common.h>
+ 
+ // local library includes
+ 
+ // local includes
+ #include "./xhc-whb04b6.h"
+ 
++#include <inifile.hh>
++#include "config.h"
++
+ using std::endl;
+ 
+ // forward declarations
+@@ -215,7 +219,7 @@
+     //! hotfix for https://github.com/machinekit/machinekit/issues/1266
+     if (WhbComponent->isSimulationModeEnabled())
+     {
+-        google::protobuf::ShutdownProtobufLibrary();
++        //google::protobuf::ShutdownProtobufLibrary();
+     }
+ 
+     delete (WhbComponent);
+--- pendant.h	Sun Jan 21 22:15:57 2018
++++ pendant.h	Sat Mar 03 22:28:38 2018
+@@ -32,7 +32,9 @@
+ // 3rd party includes
+ 
+ // local library includes
+-#include <hal_types.h>
++//include <hal_types.h>
++#include <hal.h>
++#include <math.h>
+ 
+ // forward declarations
+ 
+--- Submakefile	Sun Jan 21 22:15:57 2018
++++ Submakefile	Tue Mar 13 21:17:10 2018
+@@ -1,6 +1,6 @@
+ ifdef HAVE_LIBUSB10
+ 
+-XHC_WHB04B6_LIB_DEPENDENCIES = ../lib/liblinuxcnchal.so.0 ../lib/liblinuxcncini.so.0 ../lib/librtapi_math.so.0 ../lib/libmtalk.so ../lib/libmachinetalk-pb2++.so
++XHC_WHB04B6_LIB_DEPENDENCIES = ../lib/liblinuxcnchal.so.0 ../lib/liblinuxcncini.so.0
+ XHC_WHB04B6_SRC = hal/user_comps/xhc-whb04b-6/hal.cc \
+                   hal/user_comps/xhc-whb04b-6/usb.cc \
+                   hal/user_comps/xhc-whb04b-6/pendant-types.cc \
+@@ -10,7 +10,7 @@
+ 
+ XHC_WHB04B6_DEBUG = -g -funwind-tables
+ XHC_WHB04B6_CFLAGS += $(LIBUSB10_CFLAGS) $(XHC_WHB04B6_DEBUG) -Wall -pedantic
+-XHC_WHB04B6_LIBS = -lstdc++ $(LIBUSB10_LIBS) $(PROTOBUF_LIBS)
++XHC_WHB04B6_LIBS = -lm -lstdc++ $(LIBUSB10_LIBS)
+ 
+ $(call TOOBJSDEPS, $(XHC_WHB04B6_SRC)) : EXTRAFLAGS += $(XHC_WHB04B6_CFLAGS)
+ 
+--- usb.cc	Sun Jan 21 22:15:57 2018
++++ usb.cc	Tue Mar 13 21:10:51 2018
+@@ -29,6 +29,7 @@
+ // 3rd party includes
+ 
+ // local library includes
++#include <math.h>
+ #include <rtapi_math.h>
+ 
+ // local includes
+@@ -295,7 +296,7 @@
+ 
+ void UsbOutPackageAxisCoordinate::setCoordinate(const float& coordinate)
+ {
+-    float coordinateAbs = rtapi_fabs(coordinate);
++    float coordinateAbs = fabs(coordinate);
+     if (coordinate == coordinateAbs)
+     {
+         coordinateSign = 0;
+@@ -305,7 +306,7 @@
+         coordinateSign = 1;
+     }
+ 
+-    uint32_t scaledCoordinate = static_cast<uint32_t>(rtapi_rint(coordinateAbs * 10000.0));
++    uint32_t scaledCoordinate = static_cast<uint32_t>(rint(coordinateAbs * 10000.0));
+     integerValue  = static_cast<uint16_t>(scaledCoordinate / 10000);
+     fractionValue = static_cast<uint16_t>(scaledCoordinate % 10000);
+ }
